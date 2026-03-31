@@ -21,7 +21,7 @@ jobs:
       - name: build ipa
         run: |
           xcodebuild \
-            -project tree/main/lara.xcodeproj \
+            -project lara.xcodeproj \
             -scheme lara \
             -configuration Release \
             -sdk iphoneos \
