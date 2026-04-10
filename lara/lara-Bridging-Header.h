@@ -12,5 +12,6 @@
 #import "apfs.h"
 #import "vfs.h"
 #import "sbx.h"
+#import "amfi.h"
 
 void test(NSString *path);

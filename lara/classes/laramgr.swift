@@ -123,7 +123,6 @@ final class laramgr: ObservableObject {
     
     func panic() {
         guard dsready else { return }
-        
         globallogger.log("triggering panic")
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
             let kernbase = ds_get_kernel_base()
@@ -133,8 +132,50 @@ final class laramgr: ObservableObject {
     }
     
     func respring() {
-        notify_post("com.apple.springboard.toggleLockScreen")
-        // killproc("springboard")
+        guard dsready else {
+            logmsg("(respring) exploit not running")
+            return
+        }
+        logmsg("(respring) finding SpringBoard...")
+        DispatchQueue.global(qos: .userInitiated).async {
+            let proc = procbyname("SpringBoard")
+            if proc == 0 {
+                DispatchQueue.main.async { laramgr.shared.logmsg("(respring) SpringBoard not found") }
+                return
+            }
+            let pid = ds_kread32(proc + 0x28)
+            DispatchQueue.main.async { laramgr.shared.logmsg("(respring) killing SpringBoard pid=\(pid)") }
+            kill(Int32(pid), SIGKILL)
+        }
+    }
+
+    func debugdump() {
+        guard dsready else {
+            logmsg("(debug) exploit not running")
+            return
+        }
+        logmsg("(debug) starting dump...")
+        DispatchQueue.global(qos: .userInitiated).async {
+            amfi_debug_dump()
+        }
+    }
+
+    func platformizeself() {
+        guard dsready else {
+            logmsg("(amfi) exploit not running")
+            return
+        }
+        logmsg("(amfi) platformizing self...")
+        DispatchQueue.global(qos: .userInitiated).async {
+            let r = amfi_platformize_self()
+            DispatchQueue.main.async {
+                if r == 0 {
+                    laramgr.shared.logmsg("(amfi) platformize success!")
+                } else {
+                    laramgr.shared.logmsg("(amfi) platformize failed")
+                }
+            }
+        }
     }
     
     func vfsinit(completion: ((Bool) -> Void)? = nil) {
@@ -193,6 +234,7 @@ final class laramgr: ObservableObject {
             }
         }
     }
+
     private static let sbxlogcallback: @convention(c) (UnsafePointer<CChar>?) -> Void = { msg in
         guard let msg = msg else { return }
         let s = String(cString: msg)
@@ -262,27 +304,21 @@ final class laramgr: ObservableObject {
 
     func vfsoverwritefromlocalpath(target: String, source: String) -> Bool {
         print("(vfs) target \(source) -> \(target)")
-
         guard vfsready else {
             print("(vfs) not ready")
             return false
         }
-
         guard FileManager.default.fileExists(atPath: source) else {
             print("(vfs) source file not found: \(source)")
             return false
         }
-
         let r = vfs_overwritefile(target, source)
-
         print("(vfs) vfs_overwritefile returned: \(r)")
-
         if r == 0 {
             print("(vfs) file overwritten")
         } else {
             print("(vfs) failed to overwrite file")
         }
-
         return r == 0
     }
 
@@ -301,7 +337,6 @@ final class laramgr: ObservableObject {
             return (false, "sbx open failed: errno=\(errno) \(String(cString: strerror(errno)))")
         }
         defer { close(fd) }
-
         var total = 0
         let wroteAll = data.withUnsafeBytes { ptr -> Bool in
             guard let base = ptr.baseAddress else { return ptr.count == 0 }
@@ -312,11 +347,9 @@ final class laramgr: ObservableObject {
             }
             return true
         }
-
         if !wroteAll {
             return (false, "sbx write failed: errno=\(errno) \(String(cString: strerror(errno)))")
         }
-
         return (true, "ok (\(total) bytes)")
     }
 
@@ -325,7 +358,6 @@ final class laramgr: ObservableObject {
         guard FileManager.default.fileExists(atPath: source) else {
             return (false, "source file not found: \(source)")
         }
-
         let result: (ok: Bool, message: String)
         if sbxready {
             do {
@@ -337,15 +369,10 @@ final class laramgr: ObservableObject {
         } else {
             result = (false, "sbx not ready")
         }
-
-        if result.ok {
-            return result
-        }
-
+        if result.ok { return result }
         guard vfsready else {
             return (false, result.message + " | vfs not ready")
         }
-
         let ok = vfsoverwritefromlocalpath(target: target, source: source)
         return ok ? (true, "ok (vfs overwrite)") : (false, result.message + " | vfs overwrite failed")
     }
@@ -353,14 +380,10 @@ final class laramgr: ObservableObject {
     @discardableResult
     func lara_overwritefile(target: String, data: Data) -> (ok: Bool, message: String) {
         let result = sbxready ? sbxoverwrite(path: target, data: data) : (false, "sbx not ready")
-        if result.0 {
-            return result
-        }
-
+        if result.0 { return result }
         guard vfsready else {
             return (false, result.1 + ", vfs not ready")
         }
-
         let ok = vfsoverwritewithdata(target: target, data: data)
         return ok ? (true, "vfs overwrite ok") : (false, result.1 + ", vfs overwrite failed")
     }
@@ -369,12 +392,10 @@ final class laramgr: ObservableObject {
         let result = path.withCString { cpath in
             vfs_zeropage(cpath, 0)
         }
-
         if result != 0 {
             self.logmsg("(vfs) zeropage failed")
             return false
         }
-
         self.logmsg("(vfs) zeroed first page of \(path)")
         return true
     }
@@ -388,7 +409,7 @@ final class laramgr: ObservableObject {
     
     func sbxelevate() {
         DispatchQueue.main.async {
-            sbx_elevate();
+            sbx_elevate()
         }
     }
     
@@ -397,7 +418,6 @@ final class laramgr: ObservableObject {
         guard path.withCString({ statfs($0, &s) }) == 0 else {
             return false
         }
-        
         let fstypename = s.f_fstypename
         return withUnsafePointer(to: fstypename) { ptr in
             ptr.withMemoryRebound(to: CChar.self, capacity: MemoryLayout.size(ofValue: fstypename)) {
@@ -411,16 +431,13 @@ final class laramgr: ObservableObject {
         if !isapfs(path) {
             print("\(path) is apfs!")
         }
-        
         let result = path.withCString { cPath in
             apfs_own(cPath, uid_t(uid), gid_t(gid))
         }
-        
         if result != 0 {
             print("failed to chown \(path)")
             return false
         }
-        
         print("changed owner of \(path) to \(uid):\(gid)!")
         return true
     }

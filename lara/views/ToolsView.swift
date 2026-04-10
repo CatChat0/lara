@@ -29,20 +29,16 @@ struct ToolsView: View {
             Section {
                 HStack {
                     Text("ASLR:")
-                    
                     Spacer()
-                    
                     Text(isaslr ? "enabled" : "disabled")
                         .foregroundColor(isaslr ? Color.red : Color.green)
                         .monospaced()
-                    
                     Button {
                         isaslr = aslrstate
                     } label: {
                         Image(systemName: "arrow.clockwise")
                     }
                 }
-                
                 Button {
                     toggleaslr()
                     isaslr = aslrstate
@@ -54,27 +50,26 @@ struct ToolsView: View {
             } footer: {
                 Text("Address Space Layout Randomization. Turning it on may break lara.")
             }
-            
-            
-            if 1 == 2 {
-                Section {
-                    NavigationLink("LaraJIT") {
-                        JitView()
-                    }
-                    .disabled(!mgr.sbxready)
-                } header: {
-                    Text("Tools")
-                }
-            }
-            
+
             Section {
                 Button {
-                    globallogger.log(String(format: "0x%llx",procbyname("springboard")))
-                    // killproc("springboard")
+                    mgr.respring()
                 } label: {
-                    Text("Respring (probably broken)")
+                    Text("Respring")
                 }
-                
+
+                Button {
+                    mgr.debugdump()
+                } label: {
+                    Text("Debug Dump")
+                }
+
+                Button {
+                    mgr.platformizeself()
+                } label: {
+                    Text("Platformize Self (AMFI)")
+                }
+
                 HStack {
                     Text("ourproc: ")
                     Spacer()
@@ -82,7 +77,7 @@ struct ToolsView: View {
                         .foregroundColor(.secondary)
                         .monospaced()
                 }
-                
+
                 HStack {
                     Text("ourtask: ")
                     Spacer()
@@ -90,19 +85,15 @@ struct ToolsView: View {
                         .foregroundColor(.secondary)
                         .monospaced()
                 }
-                
+
                 HStack {
                     Text("UID:")
-
                     Spacer()
-
                     Text("\(uid)")
                         .font(.system(.body, design: .monospaced))
                         .foregroundColor(.secondary)
-
                     Button {
                         uid = getuid()
-                        print(uid)
                     } label: {
                         Image(systemName: "arrow.clockwise")
                     }
@@ -110,16 +101,12 @@ struct ToolsView: View {
 
                 HStack {
                     Text("PID:")
-
                     Spacer()
-
                     Text("\(pid)")
                         .font(.system(.body, design: .monospaced))
                         .foregroundColor(.secondary)
-
                     Button {
                         pid = getpid()
-                        print(pid)
                     } label: {
                         Image(systemName: "arrow.clockwise")
                     }
@@ -151,9 +138,7 @@ struct ToolsView: View {
                                 .truncationMode(.tail)
                         }
                     }
-                    
                     Spacer()
-                    
                     Button {
                         UIPasteboard.general.string = token ?? ""
                     } label: {
@@ -169,7 +154,6 @@ struct ToolsView: View {
                         }
                     }
                 }
-                
                 Button {
                     token = mgr.sbxgettoken(path: "/var/mobile")
                 } label: {
