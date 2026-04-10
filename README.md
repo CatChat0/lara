@@ -45,7 +45,7 @@ If lara doesnt work on your device, and you want to help the project, please als
 - Custom Overwrite
 - File Manager (Full Disk r/w)
 - MobileGestalt Editor
-- 3 App Bypass (Broken)
+- 3 App Bypass
 - DirtyZero 2 (Broken)
 
 ### coming soon:
