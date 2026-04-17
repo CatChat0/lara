@@ -90,6 +90,7 @@ struct CardView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(card.bundleName)
                                     .font(.headline)
+                                
                                 Text(card.imagePath)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -105,10 +106,10 @@ struct CardView: View {
                                 Text(option.rawValue).tag(Optional(option))
                             }
                         }
-                        .pickerStyle(MenuPickerStyle()) // dropdown style
+                        .pickerStyle(MenuPickerStyle())
                         .onChange(of: selectedOption) { option in
                             guard let option = option else { return }
-                            pendingCard = card // your current card
+                            pendingCard = card 
                             switch option {
                             case .photos:
                                 showimgpicker = true
@@ -134,39 +135,39 @@ struct CardView: View {
                     } header: {
                         Text(card.backgroundFileName)
                     }
-                    
-                    Section {
-                        HStack(alignment: .top) {
-                            AsyncImage(url: URL(string: "https://github.com/drkm9743.png")) { image in
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                            } placeholder: {
-                                ProgressView()
-                            }
-                            .frame(width: 40, height: 40)
-                            .clipShape(Circle())
-                            
-                            VStack(alignment: .leading) {
-                                Text("drkm9743")
-                                    .font(.headline)
-                                
-                                Text("Inspiration.")
-                                    .font(.subheadline)
-                                    .foregroundColor(Color.secondary)
-                            }
-                            
-                            Spacer()
+                }
+                
+                Section {
+                    HStack(alignment: .top) {
+                        AsyncImage(url: URL(string: "https://github.com/drkm9743.png")) { image in
+                            image
+                                .resizable()
+                                .scaledToFill()
+                        } placeholder: {
+                            ProgressView()
                         }
-                        .onTapGesture {
-                            if let url = URL(string: "https://github.com/drkm9743"),
-                               UIApplication.shared.canOpenURL(url) {
-                                UIApplication.shared.open(url)
-                            }
+                        .frame(width: 40, height: 40)
+                        .clipShape(Circle())
+                        
+                        VStack(alignment: .leading) {
+                            Text("drkm9743")
+                                .font(.headline)
+                            
+                            Text("Inspiration.")
+                                .font(.subheadline)
+                                .foregroundColor(Color.secondary)
                         }
-                    } header: {
-                        Text("Credits")
+                        
+                        Spacer()
                     }
+                    .onTapGesture {
+                        if let url = URL(string: "https://github.com/drkm9743"),
+                           UIApplication.shared.canOpenURL(url) {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                } header: {
+                    Text("Credits")
                 }
             }
         }
