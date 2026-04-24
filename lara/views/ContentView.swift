@@ -333,6 +333,10 @@ struct ContentView: View {
                                             EditorView()
                                         }
 
+                                        NavigationLink("Liquid Glass") {
+                                            LGView()
+                                        }
+
                                         NavigationLink("3 App Bypass") {
                                             AppsView(mgr: mgr)
                                         }

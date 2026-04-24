@@ -31,7 +31,7 @@ struct LGView: View {
             
             _gp = State(initialValue: try NSMutableDictionary(contentsOf: URL(fileURLWithPath: path), error: ()))
         } catch {
-            _mg = State(initialValue: [:])
+            _gp = State(initialValue: [:])
             _status = State(initialValue: "Failed to copy GlobalPreferences: \(error)")
         }
 
@@ -41,14 +41,14 @@ struct LGView: View {
         NavigationStack {
             List {
                 Section {
-                    Toggle("Force Solarium Fallback", isOn: mgkeybinding("SolariumForceFallback"))
-                    Toggle("Disable Liquid Glass", isOn: mgkeybinding("com.apple.SwiftUI.DisableSolarium"))
-                    Toggle("Ignore Liquid Glass App Build Check", isOn: mgkeybinding("com.apple.SwiftUI.IgnoreSolariumLinkedOnCheck"))
-                    Toggle("Disable Liquid Glass on LS Clock", isOn: mgkeybinding("SBDisallowGlassTime"))
-                    Toggle("Disable Liquid Glass on Dock", isOn: mgkeybinding("SBDisableGlassDock"))
-                    Toggle("Disable Specular Motion", isOn: mgkeybinding("SBDisableSpecularEverywhereUsingLSSAssertion"))
-                    Toggle("Disable Outer Refraction", isOn: mgkeybinding("SolariumDisableOuterRefraction"))
-                    Toggle("Disable Solarium HDR", isOn: mgkeybinding("SolariumAllowHDR", default: true, enable: false))
+                    Toggle("Force Solarium Fallback", isOn: gpkeybinding("SolariumForceFallback"))
+                    Toggle("Disable Liquid Glass", isOn: gpkeybinding("com.apple.SwiftUI.DisableSolarium"))
+                    Toggle("Ignore Liquid Glass App Build Check", isOn: gpkeybinding("com.apple.SwiftUI.IgnoreSolariumLinkedOnCheck"))
+                    Toggle("Disable Liquid Glass on LS Clock", isOn: gpkeybinding("SBDisallowGlassTime"))
+                    Toggle("Disable Liquid Glass on Dock", isOn: gpkeybinding("SBDisableGlassDock"))
+                    Toggle("Disable Specular Motion", isOn: gpkeybinding("SBDisableSpecularEverywhereUsingLSSAssertion"))
+                    Toggle("Disable Outer Refraction", isOn: gpkeybinding("SolariumDisableOuterRefraction"))
+                    Toggle("Disable Solarium HDR", isOn: gpkeybinding("SolariumAllowHDR", default: true, enable: false))
                 } header: {
                     Text("Liquid Glass")
                 } footer: {
@@ -141,7 +141,7 @@ struct LGView: View {
     private func gpkeybinding<T: Equatable>(_ key: String, type: T.Type = Bool.self, default: T? = false, enable: T? = true) -> Binding<Bool> {
         return Binding(
             get: {
-                if let value = gp[keys.first!] as? T?, let enable {
+                if let value = gp[keys] as? T?, let enable {
                     return value == enable
                 }
                 return false
