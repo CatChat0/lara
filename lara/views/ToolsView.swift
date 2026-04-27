@@ -146,23 +146,15 @@ struct ToolsView: View {
             Section {
                 Button {
                     PPRunning = true
-                    if mgr.PPHelper() {
-                        status = "Succeeded. Open the Pocket Poster app, open settings and tap Detect."
-                    } else {
-                        status = "Failed. Check logs."
+                    Task {
+                        if await mgr.PPHelper() {
+                            status = "Succeeded. Open the Pocket Poster app, open settings and tap Detect."
+                        } else {
+                            status = "Failed. Check logs."
+                        }
                     }
                     PPRunning = false
                 } label: {
-                    if PPRunning {
-                        HStack {
-                            ProgressView(value: mgr.vfsprogress)
-                                .progressViewStyle(.circular)
-                                .frame(width: 18, height: 18)
-                            Text("Working...")
-                        }
-                    } else {
-                        Text("Pocket Poster Helper")
-                    }
                     Text("Pocket Poster Helper")
                 }
                 .disabled(!mgr.sbxready || PPRunning)

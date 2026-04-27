@@ -503,7 +503,7 @@ final class laramgr: ObservableObject {
         }
     }
 
-    func getAppList() -> [String:AppInfo]? {
+    func getAppList() async -> [String:AppInfo]? {
         let fm = FileManager.default
         let dataFolder = "/private/var/mobile/Containers/Data/Application"
         let bundleFolder = "/private/var/containers/Bundle/Application"
