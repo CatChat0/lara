@@ -324,7 +324,7 @@ struct EditorView: View {
         )
     }
 
-    static func requiresVersion(_ major : Int, _ minor: Int = 0, _ patch: Int = 0) -> Bool {
+    private func requiresVersion(_ major : Int, _ minor: Int = 0, _ patch: Int = 0) -> Bool {
         // XXYYZZ: major XX, minor YY, patch ZZ
         let requiredVersion = major*10000 + minor*100 + patch
         let currentVersion = os.majorVersion*10000 + os.minorVersion*100 + os.patchVersion
