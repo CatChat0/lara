@@ -2,11 +2,19 @@
 //  ProbeView.swift
 //  lara
 //
-//  Shows probe results with full log output.
-//  Add to ContentView navigation.
-//
 
 import SwiftUI
+
+// Static log buffer - C callbacks can't capture context
+private var probeLogLines: [String] = []
+private var probeLogCallback: (() -> Void)? = nil
+
+private let probeLogC: (@convention(c) (UnsafePointer<CChar>?) -> Void) = { msg in
+    guard let msg = msg else { return }
+    let line = String(cString: msg)
+    probeLogLines.append(line)
+    DispatchQueue.main.async { probeLogCallback?() }
+}
 
 struct ProbeView: View {
     @ObservedObject var mgr: laramgr
@@ -91,30 +99,29 @@ struct ProbeView: View {
         running = true
         log = ""
         results = []
+        probeLogLines = []
+
+        // Wire up the static callback to update our state
+        probeLogCallback = {
+            self.log = probeLogLines.joined(separator: "\n")
+        }
+        probe_set_log(probeLogC)
 
         DispatchQueue.global(qos: .userInitiated).async {
-            var logLines: [String] = []
-
-            probe_set_log { msg in
-                guard let msg = msg else { return }
-                let line = String(cString: msg)
-                logLines.append(line)
-                DispatchQueue.main.async {
-                    self.log = logLines.joined(separator: "\n")
-                }
-            }
-
             let r = probe_run_all()
 
             DispatchQueue.main.async {
+                probe_set_log(nil)
+                probeLogCallback = nil
+                self.log = probeLogLines.joined(separator: "\n")
                 self.results = [
-                    ("A: AMFI label slot",     statusStr(r.probe_a), color(r.probe_a)),
-                    ("B: mac_proc_enforce",    statusStr(r.probe_b), color(r.probe_b)),
-                    ("C: amfid RemoteCall",    statusStr(r.probe_c), color(r.probe_c)),
-                    ("D: launchd spawn",       statusStr(r.probe_d), color(r.probe_d)),
-                    ("E: /var/jb VFS write",   statusStr(r.probe_e), color(r.probe_e)),
-                    ("F: preboot path",        statusStr(r.probe_f), color(r.probe_f)),
-                    ("G: launchd AMFI str",    statusStr(r.probe_g), color(r.probe_g)),
+                    ("A: AMFI label slot",    statusStr(r.probe_a), color(r.probe_a)),
+                    ("B: mac_proc_enforce",   statusStr(r.probe_b), color(r.probe_b)),
+                    ("C: amfid RemoteCall",   statusStr(r.probe_c), color(r.probe_c)),
+                    ("D: launchd spawn",      statusStr(r.probe_d), color(r.probe_d)),
+                    ("E: /var/jb VFS write",  statusStr(r.probe_e), color(r.probe_e)),
+                    ("F: preboot path",       statusStr(r.probe_f), color(r.probe_f)),
+                    ("G: launchd AMFI str",   statusStr(r.probe_g), color(r.probe_g)),
                 ]
                 self.running = false
             }
