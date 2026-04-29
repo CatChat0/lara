@@ -530,6 +530,10 @@ struct ContentView: View {
                             NavigationLink("Tools") {
                                 ToolsView()
                             }
+                            
+                            NavigationLink("Probe Suite") {
+                                ProbeView(mgr: mgr)
+                            }
                         }
 
                         Button("Respring") {
