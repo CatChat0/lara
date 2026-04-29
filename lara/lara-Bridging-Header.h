@@ -14,6 +14,7 @@
 #import "sbx.h"
 #import "rc.h"
 #import "RemoteCall.h"
+#import "probe.h"
 
 long FindCacheDataOffset(const char *mgKey);
 
