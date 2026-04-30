@@ -16,6 +16,7 @@
 #import "RemoteCall.h"
 #import "probe.h"
 #import "semijb-bridge.h"
+#import "zstd_decompress.h"
 
 
 long FindCacheDataOffset(const char *mgKey);
