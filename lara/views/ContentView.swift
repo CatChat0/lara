@@ -534,6 +534,10 @@ struct ContentView: View {
                             NavigationLink("Probe Suite") {
                                 ProbeView(mgr: mgr)
                             }
+                            
+                            NavigationLink("Semi-Jailbreak") {
+                                SemiJBView(mgr: mgr)
+                            }
                         }
 
                         Button("Respring") {
