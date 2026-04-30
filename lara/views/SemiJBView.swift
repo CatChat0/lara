@@ -5,20 +5,15 @@
 
 import SwiftUI
 
-// Static globals for C callback — cannot capture context
-private var sjbLogLines:   [String] = []
-private var sjbProgressVal: Double  = 0
-private var sjbStatusStr:   String  = ""
+private var sjbLogLines:    [String] = []
+private var sjbProgressVal: Double   = 0
+private var sjbStatusStr:   String   = ""
 private var sjbUpdate: (() -> Void)? = nil
 
-// C-compatible callback — handles both log lines (p == -1) and progress updates
 private let sjbCB: (@convention(c) (Double, UnsafePointer<CChar>?) -> Void) = { p, s in
     let str = s.map { String(cString: $0) } ?? ""
     if !str.isEmpty { sjbLogLines.append(str) }
-    if p >= 0 {
-        sjbProgressVal = p
-        sjbStatusStr   = str
-    }
+    if p >= 0 { sjbProgressVal = p; sjbStatusStr = str }
     DispatchQueue.main.async { sjbUpdate?() }
 }
 
@@ -58,22 +53,16 @@ struct SemiJBView: View {
 
     var body: some View {
         List {
-            // Header
             Section {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Semi-Jailbreak")
                         .font(.title2.bold())
                     Text("Installs Procursus bootstrap via launchd RemoteCall.")
                         .font(.caption).foregroundColor(.secondary)
-                    if !semijb_is_bootstrapped() {
-                        Text("⚠️ Bundle bootstrap.tar in app first — see README")
-                            .font(.caption).foregroundColor(.orange)
-                    }
                 }
                 .padding(.vertical, 4)
             }
 
-            // Prerequisites
             if !mgr.dsready {
                 Section {
                     Label("Run exploit first",
@@ -89,15 +78,13 @@ struct SemiJBView: View {
                 }
             }
 
-            // Steps
             Section("Steps") {
-                stepRow("1. AMFI bypass",      "Write AMFI label = 0",               stAmfi)
-                stepRow("2. Root elevation",   "Swap ucred with launchd",            stElev)
-                stepRow("3. Bootstrap",        "Extract Procursus to preboot",       stBoot)
-                stepRow("4. Daemon",           "Register launchd respring helper",   stDaemon)
+                stepRow("1. AMFI bypass",     "Write AMFI label = 0",             stAmfi)
+                stepRow("2. Root elevation",  "Swap ucred with launchd",          stElev)
+                stepRow("3. Bootstrap",       "Extract Procursus to preboot",     stBoot)
+                stepRow("4. Daemon",          "Register launchd respring helper", stDaemon)
             }
 
-            // Progress bar
             if running || done {
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
@@ -109,7 +96,6 @@ struct SemiJBView: View {
                 }
             }
 
-            // Action
             Section {
                 if done {
                     Label("Done! Respring to finish.",
@@ -118,21 +104,6 @@ struct SemiJBView: View {
                     Button("Respring") { mgr.respring() }
                         .foregroundColor(.red)
                 } else {
-
-                    // Reset button — removes marker so reinstall runs fresh
-                    Button("Reset Bootstrap (delete marker)") {
-                        semijb_set_log_callback(sjbCB)
-                        DispatchQueue.global(qos: .userInitiated).async {
-                            let ok = semijb_reset()
-                            DispatchQueue.main.async {
-                                self.logLines.append(ok ? "Reset done — tap Install to reinstall" : "Reset failed")
-                                self.logLines = sjbLogLines
-                            }
-                        }
-                    }
-                    .foregroundColor(.orange)
-                    .disabled(running)
-                }
                     Button { runAll() } label: {
                         HStack {
                             if running {
@@ -153,7 +124,15 @@ struct SemiJBView: View {
                 }
             }
 
-            // Log
+            // Reset button — removes marker so reinstall runs fresh
+            Section {
+                Button("Reset Bootstrap") {
+                    resetBootstrap()
+                }
+                .foregroundColor(.orange)
+                .disabled(running)
+            }
+
             if !logLines.isEmpty {
                 Section("Log") {
                     ScrollView {
@@ -162,7 +141,6 @@ struct SemiJBView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .frame(maxHeight: 400)
-
                     Button("Copy Log") {
                         UIPasteboard.general.string = logLines.joined(separator: "\n")
                     }
@@ -189,6 +167,24 @@ struct SemiJBView: View {
         .padding(.vertical, 2)
     }
 
+    private func resetBootstrap() {
+        sjbLogLines = []
+        sjbUpdate = { self.logLines = sjbLogLines }
+        semijb_set_log_callback(sjbCB)
+        DispatchQueue.global(qos: .userInitiated).async {
+            let ok = semijb_reset()
+            DispatchQueue.main.async {
+                self.logLines = sjbLogLines
+                self.logLines.append(ok
+                    ? "✓ Reset done — tap Install to reinstall"
+                    : "✗ Reset failed")
+                self.done = false
+                semijb_set_log_callback(nil)
+                sjbUpdate = nil
+            }
+        }
+    }
+
     private func runAll() {
         guard !running else { return }
         running = true
@@ -198,40 +194,32 @@ struct SemiJBView: View {
         sjbLogLines = []
         stAmfi = .running; stElev = .idle; stBoot = .idle; stDaemon = .idle
 
-        // Wire update callback to refresh our @State
         sjbUpdate = {
             self.progress = sjbProgressVal
             self.status   = sjbStatusStr
             self.logLines = sjbLogLines
         }
-
-        // Set global C callback BEFORE calling anything
         semijb_set_log_callback(sjbCB)
 
         DispatchQueue.global(qos: .userInitiated).async {
-
-            // Step 1: AMFI bypass
             let amfi = semijb_amfi_bypass()
             DispatchQueue.main.async {
                 self.stAmfi = amfi ? .ok : .failed
                 self.stElev = .running
             }
 
-            // Step 2: Root elevation
             let elev = semijb_elevate()
             DispatchQueue.main.async {
                 self.stElev = elev ? .ok : .failed
                 self.stBoot = .running
             }
 
-            // Step 3: Bootstrap
             let boot = semijb_bootstrap(sjbCB)
             DispatchQueue.main.async {
                 self.stBoot   = boot ? .ok : .failed
                 self.stDaemon = .running
             }
 
-            // Step 4: Daemon
             let daemon = semijb_daemon()
             DispatchQueue.main.async {
                 self.stDaemon = daemon ? .ok : .failed
@@ -242,8 +230,6 @@ struct SemiJBView: View {
                     ? "Done! Respring to finish."
                     : "Incomplete — check log"
                 self.logLines = sjbLogLines
-
-                // Clear callback
                 semijb_set_log_callback(nil)
                 sjbUpdate = nil
             }
