@@ -13,9 +13,11 @@ private var sjbUpdateCallback: (() -> Void)? = nil
 
 private let sjbProgressC: (@convention(c) (Double, UnsafePointer<CChar>?) -> Void) = { p, s in
     let str = s.map { String(cString: $0) } ?? ""
-    sjbProgressVal = p
-    sjbStatusStr   = str
     if !str.isEmpty { sjbLogLines.append(str) }
+    if p >= 0 {  // -1.0 = log-only, don't update progress bar
+        sjbProgressVal = p
+        sjbStatusStr   = str
+    }
     DispatchQueue.main.async { sjbUpdateCallback?() }
 }
 
