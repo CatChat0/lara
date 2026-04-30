@@ -5,20 +5,21 @@
 
 import SwiftUI
 
-// Static C callback for progress — can't capture context in C function ptr
-private var sjbLogLines: [String] = []
-private var sjbProgressVal: Double = 0
-private var sjbStatusStr: String = ""
-private var sjbUpdateCallback: (() -> Void)? = nil
+// Static globals for C callback — cannot capture context
+private var sjbLogLines:   [String] = []
+private var sjbProgressVal: Double  = 0
+private var sjbStatusStr:   String  = ""
+private var sjbUpdate: (() -> Void)? = nil
 
-private let sjbProgressC: (@convention(c) (Double, UnsafePointer<CChar>?) -> Void) = { p, s in
+// C-compatible callback — handles both log lines (p == -1) and progress updates
+private let sjbCB: (@convention(c) (Double, UnsafePointer<CChar>?) -> Void) = { p, s in
     let str = s.map { String(cString: $0) } ?? ""
     if !str.isEmpty { sjbLogLines.append(str) }
-    if p >= 0 {  // -1.0 = log-only, don't update progress bar
+    if p >= 0 {
         sjbProgressVal = p
         sjbStatusStr   = str
     }
-    DispatchQueue.main.async { sjbUpdateCallback?() }
+    DispatchQueue.main.async { sjbUpdate?() }
 }
 
 struct SemiJBView: View {
@@ -30,12 +31,12 @@ struct SemiJBView: View {
     @State private var status    = ""
     @State private var logLines  = [String]()
 
-    @State private var stAmfi   = StepState.idle
-    @State private var stElev   = StepState.idle
-    @State private var stBoot   = StepState.idle
-    @State private var stDaemon = StepState.idle
+    @State private var stAmfi   = Step.idle
+    @State private var stElev   = Step.idle
+    @State private var stBoot   = Step.idle
+    @State private var stDaemon = Step.idle
 
-    enum StepState {
+    enum Step {
         case idle, running, ok, failed
         var color: Color {
             switch self {
@@ -57,56 +58,73 @@ struct SemiJBView: View {
 
     var body: some View {
         List {
+            // Header
             Section {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Semi-Jailbreak")
                         .font(.title2.bold())
                     Text("Installs Procursus bootstrap via launchd RemoteCall.")
                         .font(.caption).foregroundColor(.secondary)
+                    if !semijb_is_bootstrapped() {
+                        Text("⚠️ Bundle bootstrap.tar in app first — see README")
+                            .font(.caption).foregroundColor(.orange)
+                    }
                 }
                 .padding(.vertical, 4)
             }
 
+            // Prerequisites
             if !mgr.dsready {
                 Section {
-                    Label("Run exploit first", systemImage: "exclamationmark.triangle.fill")
+                    Label("Run exploit first",
+                          systemImage: "exclamationmark.triangle.fill")
                         .foregroundColor(.yellow)
                 }
             }
             if mgr.dsready && !mgr.sbxready {
                 Section {
-                    Label("Run sandbox escape first", systemImage: "exclamationmark.triangle.fill")
+                    Label("Run sandbox escape first",
+                          systemImage: "exclamationmark.triangle.fill")
                         .foregroundColor(.orange)
                 }
             }
 
+            // Steps
             Section("Steps") {
-                stepRow("1. AMFI bypass",     "Write AMFI label slot = 0",              stAmfi)
-                stepRow("2. Root elevation",  "Swap ucred with launchd",                stElev)
-                stepRow("3. Bootstrap",       "Extract Procursus to /private/preboot",  stBoot)
-                stepRow("4. Daemon",          "Register launchd helper",                stDaemon)
+                stepRow("1. AMFI bypass",      "Write AMFI label = 0",               stAmfi)
+                stepRow("2. Root elevation",   "Swap ucred with launchd",            stElev)
+                stepRow("3. Bootstrap",        "Extract Procursus to preboot",       stBoot)
+                stepRow("4. Daemon",           "Register launchd respring helper",   stDaemon)
             }
 
+            // Progress bar
             if running || done {
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
-                        ProgressView(value: progress).tint(done ? .green : .accentColor)
-                        Text(status).font(.caption).foregroundColor(.secondary)
+                        ProgressView(value: progress)
+                            .tint(done ? .green : .accentColor)
+                        Text(status)
+                            .font(.caption).foregroundColor(.secondary)
                     }
                 }
             }
 
+            // Action
             Section {
                 if done {
-                    Label("Done! Respring to finish.", systemImage: "party.popper.fill")
+                    Label("Done! Respring to finish.",
+                          systemImage: "party.popper.fill")
                         .foregroundColor(.green)
                     Button("Respring") { mgr.respring() }
                         .foregroundColor(.red)
                 } else {
                     Button { runAll() } label: {
                         HStack {
-                            if running { ProgressView().tint(.white).padding(.trailing, 4) }
-                            Text(running ? "Working…" : "Install Semi-Jailbreak").bold()
+                            if running {
+                                ProgressView().tint(.white).padding(.trailing, 4)
+                            }
+                            Text(running ? "Working…" : "Install Semi-Jailbreak")
+                                .bold()
                         }
                         .frame(maxWidth: .infinity)
                     }
@@ -120,6 +138,7 @@ struct SemiJBView: View {
                 }
             }
 
+            // Log
             if !logLines.isEmpty {
                 Section("Log") {
                     ScrollView {
@@ -127,7 +146,8 @@ struct SemiJBView: View {
                             .font(.system(size: 10, design: .monospaced))
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .frame(maxHeight: 300)
+                    .frame(maxHeight: 400)
+
                     Button("Copy Log") {
                         UIPasteboard.general.string = logLines.joined(separator: "\n")
                     }
@@ -140,9 +160,11 @@ struct SemiJBView: View {
     }
 
     @ViewBuilder
-    private func stepRow(_ title: String, _ sub: String, _ state: StepState) -> some View {
+    private func stepRow(_ title: String, _ sub: String, _ state: Step) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: state.icon).foregroundColor(state.color).frame(width: 20)
+            Image(systemName: state.icon)
+                .foregroundColor(state.color)
+                .frame(width: 22)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.subheadline.weight(.medium))
                 Text(sub).font(.caption).foregroundColor(.secondary)
@@ -154,25 +176,33 @@ struct SemiJBView: View {
 
     private func runAll() {
         guard !running else { return }
-        running = true; done = false; progress = 0
-        logLines = []; sjbLogLines = []
+        running = true
+        done    = false
+        progress = 0
+        logLines = []
+        sjbLogLines = []
         stAmfi = .running; stElev = .idle; stBoot = .idle; stDaemon = .idle
 
-        sjbUpdateCallback = {
+        // Wire update callback to refresh our @State
+        sjbUpdate = {
             self.progress = sjbProgressVal
             self.status   = sjbStatusStr
             self.logLines = sjbLogLines
         }
 
+        // Set global C callback BEFORE calling anything
+        semijb_set_log_callback(sjbCB)
+
         DispatchQueue.global(qos: .userInitiated).async {
-            // Step 1: AMFI
+
+            // Step 1: AMFI bypass
             let amfi = semijb_amfi_bypass()
             DispatchQueue.main.async {
                 self.stAmfi = amfi ? .ok : .failed
                 self.stElev = .running
             }
 
-            // Step 2: Elevate
+            // Step 2: Root elevation
             let elev = semijb_elevate()
             DispatchQueue.main.async {
                 self.stElev = elev ? .ok : .failed
@@ -180,7 +210,7 @@ struct SemiJBView: View {
             }
 
             // Step 3: Bootstrap
-            let boot = semijb_bootstrap(sjbProgressC)
+            let boot = semijb_bootstrap(sjbCB)
             DispatchQueue.main.async {
                 self.stBoot   = boot ? .ok : .failed
                 self.stDaemon = .running
@@ -193,9 +223,14 @@ struct SemiJBView: View {
                 self.running  = false
                 self.done     = boot
                 self.progress = 1.0
-                self.status   = boot ? "Done! Respring to finish." : "Incomplete — check log"
+                self.status   = boot
+                    ? "Done! Respring to finish."
+                    : "Incomplete — check log"
                 self.logLines = sjbLogLines
-                sjbUpdateCallback = nil
+
+                // Clear callback
+                semijb_set_log_callback(nil)
+                sjbUpdate = nil
             }
         }
     }
