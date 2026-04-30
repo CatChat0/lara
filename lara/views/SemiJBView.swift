@@ -118,6 +118,21 @@ struct SemiJBView: View {
                     Button("Respring") { mgr.respring() }
                         .foregroundColor(.red)
                 } else {
+
+                    // Reset button — removes marker so reinstall runs fresh
+                    Button("Reset Bootstrap (delete marker)") {
+                        semijb_set_log_callback(sjbCB)
+                        DispatchQueue.global(qos: .userInitiated).async {
+                            let ok = semijb_reset()
+                            DispatchQueue.main.async {
+                                self.logLines.append(ok ? "Reset done — tap Install to reinstall" : "Reset failed")
+                                self.logLines = sjbLogLines
+                            }
+                        }
+                    }
+                    .foregroundColor(.orange)
+                    .disabled(running)
+                }
                     Button { runAll() } label: {
                         HStack {
                             if running {
