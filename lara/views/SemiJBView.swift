@@ -131,6 +131,19 @@ struct SemiJBView: View {
                 }
                 .foregroundColor(.orange)
                 .disabled(running)
+
+                Button("Clean /var/jb symlink") {
+                    semijb_set_log_callback(sjbCB)
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        let ok = semijb_clean_varjb()
+                        DispatchQueue.main.async {
+                            self.logLines.append(ok ? "✓ /var/jb cleaned" : "✗ clean failed")
+                            semijb_set_log_callback(nil)
+                        }
+                    }
+                }
+                .foregroundColor(.red)
+                .disabled(running)
             }
 
             if !logLines.isEmpty {
