@@ -188,8 +188,10 @@ struct SemiJBView: View {
     }
 
     private func patchAMFID() {
+        // Use semijb log callback so output appears in UI
         semijb_set_log_callback(sjbCB)
         running = true
+        logLines = []
         DispatchQueue.global(qos: .userInitiated).async {
             let ok = amfid_patch()
             DispatchQueue.main.async {
