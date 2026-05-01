@@ -20,7 +20,8 @@ private let sjbCB: (@convention(c) (Double, UnsafePointer<CChar>?) -> Void) = { 
 struct SemiJBView: View {
     @ObservedObject var mgr: laramgr
 
-    @State private var running   = false
+    @State private var running      = false
+    @State private var amfidPatched = false
     @State private var done      = false
     @State private var progress  = 0.0
     @State private var status    = ""
