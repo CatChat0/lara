@@ -188,16 +188,15 @@ struct SemiJBView: View {
     }
 
     private func patchAMFID() {
-        // Use semijb log callback so output appears in UI
         semijb_set_log_callback(sjbCB)
         running = true
-        logLines = []
+        // Don't clear log — append to existing
         DispatchQueue.global(qos: .userInitiated).async {
             let ok = amfid_patch()
             DispatchQueue.main.async {
                 self.amfidPatched = ok
-                self.logLines.append(ok ? "✓ AMFID patched — unsigned binaries enabled!" : "✗ AMFID patch failed — check log")
-                semijb_set_log_callback(nil)
+                self.logLines.append(ok ? "✓ AMFID patched!" : "✗ AMFID patch failed")
+                // Keep callback active so logs show
                 self.running = false
             }
         }
