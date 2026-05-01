@@ -88,6 +88,15 @@ struct ProbeView: View {
                     }
                     .font(.caption)
                 }
+
+                // Debug: read known panic address
+                Section {
+                    Button("Read Panic Address (0xffffffe10bf6bcf8)") {
+                        readPanicAddr()
+                    }
+                    .foregroundColor(.orange)
+                    .disabled(!mgr.dsready)
+                }
             }
         }
         .navigationTitle("Probe Suite")
