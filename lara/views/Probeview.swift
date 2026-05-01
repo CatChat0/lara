@@ -92,7 +92,7 @@ struct ProbeView: View {
                 // Debug: read known panic address
                 Section {
                     Button("Read Panic Address (0xffffffe10bf6bcf8)") {
-                        readPanicAddr()
+                        readPanicAddress()
                     }
                     .foregroundColor(.orange)
                     .disabled(!mgr.dsready)
@@ -101,6 +101,20 @@ struct ProbeView: View {
         }
         .navigationTitle("Probe Suite")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func readPanicAddress() {
+        probeLogLines = []
+        probeLogCallback = { self.log = probeLogLines.joined(separator: "\n") }
+        probe_set_log(probeLogC)
+        DispatchQueue.global(qos: .userInitiated).async {
+            probe_panic_address()
+            DispatchQueue.main.async {
+                probe_set_log(nil)
+                probeLogCallback = nil
+                self.log = probeLogLines.joined(separator: "\n")
+            }
+        }
     }
 
     private func runProbes() {
