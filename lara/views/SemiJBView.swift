@@ -132,6 +132,12 @@ struct SemiJBView: View {
                 .foregroundColor(.orange)
                 .disabled(running)
 
+                Button(amfidPatched ? "AMFID Patched ✓" : "Patch AMFID") {
+                    patchAMFID()
+                }
+                .foregroundColor(amfidPatched ? .green : .purple)
+                .disabled(running || !mgr.dsready)
+
                 Button("Clean /var/jb symlink") {
                     semijb_set_log_callback(sjbCB)
                     DispatchQueue.global(qos: .userInitiated).async {
@@ -178,6 +184,20 @@ struct SemiJBView: View {
             Spacer()
         }
         .padding(.vertical, 2)
+    }
+
+    private func patchAMFID() {
+        semijb_set_log_callback(sjbCB)
+        running = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            let ok = amfid_patch()
+            DispatchQueue.main.async {
+                self.amfidPatched = ok
+                self.logLines.append(ok ? "✓ AMFID patched — unsigned binaries enabled!" : "✗ AMFID patch failed — check log")
+                semijb_set_log_callback(nil)
+                self.running = false
+            }
+        }
     }
 
     private func resetBootstrap() {
