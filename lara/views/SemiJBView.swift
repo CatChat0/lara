@@ -140,8 +140,16 @@ struct SemiJBView: View {
                 .disabled(running || !mgr.dsready)
 
                 Button("Inspect pmap") {
+                    sjbLogLines = []
+                    sjbUpdate = { self.logLines = sjbLogLines }
+                    semijb_set_log_callback(sjbCB)
                     DispatchQueue.global(qos: .userInitiated).async {
                         pmap_inspect()
+                        DispatchQueue.main.async {
+                            self.logLines = sjbLogLines
+                            semijb_set_log_callback(nil)
+                            sjbUpdate = nil
+                        }
                     }
                 }
                 .foregroundColor(.blue)
