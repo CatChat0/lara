@@ -139,6 +139,14 @@ struct SemiJBView: View {
                 .foregroundColor(amfidPatched ? .green : .purple)
                 .disabled(running || !mgr.dsready)
 
+                Button("Inspect pmap") {
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        pmap_inspect()
+                    }
+                }
+                .foregroundColor(.blue)
+                .disabled(!mgr.dsready)
+
                 Button("Clean /var/jb symlink") {
                     semijb_set_log_callback(sjbCB)
                     DispatchQueue.global(qos: .userInitiated).async {
