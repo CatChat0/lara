@@ -33,7 +33,6 @@ struct SemiJBView: View {
     @State private var stDaemon = Step.idle
 
     @State private var pmapMonitoring = false
-    private let pmapMonitorInterval: TimeInterval = 2.0
 
     enum Step {
         case idle, running, ok, failed
@@ -144,9 +143,8 @@ struct SemiJBView: View {
 
                 Button(pmapMonitoring ? "Stop Monitoring" : "Monitor pmap") {
                     if pmapMonitoring {
+                        pmap_monitor_stop()
                         pmapMonitoring = false
-                        semijb_set_log_callback(nil)
-                        sjbUpdate = nil
                     } else {
                         pmapMonitoring = true
                         sjbLogLines = []
@@ -257,12 +255,12 @@ struct SemiJBView: View {
 
     private func startPmapMonitor() {
         DispatchQueue.global(qos: .userInitiated).async {
-            while self.pmapMonitoring {
-                pmap_inspect()
-                Thread.sleep(forTimeInterval: self.pmapMonitorInterval)
-            }
+            pmap_monitor()  // blocks until pmap_monitor_stop() is called
             DispatchQueue.main.async {
+                self.pmapMonitoring = false
                 self.logLines = sjbLogLines
+                semijb_set_log_callback(nil)
+                sjbUpdate = nil
             }
         }
     }
