@@ -32,6 +32,9 @@ struct SemiJBView: View {
     @State private var stBoot   = Step.idle
     @State private var stDaemon = Step.idle
 
+    @State private var pmapMonitoring = false
+    private let pmapMonitorInterval: TimeInterval = 2.0
+
     enum Step {
         case idle, running, ok, failed
         var color: Color {
@@ -139,6 +142,22 @@ struct SemiJBView: View {
                 .foregroundColor(amfidPatched ? .green : .purple)
                 .disabled(running || !mgr.dsready)
 
+                Button(pmapMonitoring ? "Stop Monitoring" : "Monitor pmap") {
+                    if pmapMonitoring {
+                        pmapMonitoring = false
+                        semijb_set_log_callback(nil)
+                        sjbUpdate = nil
+                    } else {
+                        pmapMonitoring = true
+                        sjbLogLines = []
+                        sjbUpdate = { self.logLines = sjbLogLines }
+                        semijb_set_log_callback(sjbCB)
+                        startPmapMonitor()
+                    }
+                }
+                .foregroundColor(pmapMonitoring ? .red : .cyan)
+                .disabled(!mgr.dsready)
+
                 Button("Inspect pmap") {
                     sjbLogLines = []
                     sjbUpdate = { self.logLines = sjbLogLines }
@@ -232,6 +251,18 @@ struct SemiJBView: View {
                 self.done = false
                 semijb_set_log_callback(nil)
                 sjbUpdate = nil
+            }
+        }
+    }
+
+    private func startPmapMonitor() {
+        DispatchQueue.global(qos: .userInitiated).async {
+            while self.pmapMonitoring {
+                pmap_inspect()
+                Thread.sleep(forTimeInterval: self.pmapMonitorInterval)
+            }
+            DispatchQueue.main.async {
+                self.logLines = sjbLogLines
             }
         }
     }
