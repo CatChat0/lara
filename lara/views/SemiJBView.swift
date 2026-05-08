@@ -172,6 +172,22 @@ struct SemiJBView: View {
                 .foregroundColor(.blue)
                 .disabled(!mgr.dsready)
 
+                Button("Fuzz pmap") {
+                    sjbLogLines = []
+                    sjbUpdate = { self.logLines = sjbLogLines }
+                    semijb_set_log_callback(sjbCB)
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        pmap_fuzz()
+                        DispatchQueue.main.async {
+                            self.logLines = sjbLogLines
+                            semijb_set_log_callback(nil)
+                            sjbUpdate = nil
+                        }
+                    }
+                }
+                .foregroundColor(.purple)
+                .disabled(!mgr.dsready)
+
                 Button("Clean /var/jb symlink") {
                     semijb_set_log_callback(sjbCB)
                     DispatchQueue.global(qos: .userInitiated).async {

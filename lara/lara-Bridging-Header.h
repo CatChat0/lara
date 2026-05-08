@@ -17,6 +17,7 @@
 #import "semijb-bridge.h"
 #import "amfid_patch.h"
 #import "pmap_inspect.h"
+#import "pmap_fuzzer.h"
 #import "persistence.h"
 #import "RemoteCall.h"
 
