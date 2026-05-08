@@ -19,6 +19,7 @@
 #import "pmap_inspect.h"
 #import "pmap_fuzzer.h"
 #import "pmap_probe.h"
+#import "fuzz_persist.h"
 #import "persistence.h"
 #import "RemoteCall.h"
 

@@ -188,6 +188,38 @@ struct SemiJBView: View {
                 .foregroundColor(.purple)
                 .disabled(!mgr.dsready)
 
+                Button("Fuzz Overnight") {
+                    sjbLogLines = []
+                    sjbUpdate = { self.logLines = sjbLogLines }
+                    semijb_set_log_callback(sjbCB)
+                    DispatchQueue.global(qos: .background).async {
+                        pmap_fuzz_persistent()
+                        DispatchQueue.main.async {
+                            self.logLines = sjbLogLines
+                            semijb_set_log_callback(nil)
+                            sjbUpdate = nil
+                        }
+                    }
+                }
+                .foregroundColor(.orange)
+                .disabled(!mgr.dsready)
+
+                Button("Show Results") {
+                    sjbLogLines = []
+                    sjbUpdate = { self.logLines = sjbLogLines }
+                    semijb_set_log_callback(sjbCB)
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        pmap_fuzz_show_results()
+                        DispatchQueue.main.async {
+                            self.logLines = sjbLogLines
+                            semijb_set_log_callback(nil)
+                            sjbUpdate = nil
+                        }
+                    }
+                }
+                .foregroundColor(.green)
+                .disabled(!mgr.dsready)
+
                 Button("Probe PPL") {
                     sjbLogLines = []
                     sjbUpdate = { self.logLines = sjbLogLines }
